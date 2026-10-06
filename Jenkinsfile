@@ -14,7 +14,8 @@
     }
 
     environment {
-        PROJECT_KEY = 'psw-pipeline-base'
+        PROJECT_KEY  = 'psw-pipeline-base'
+        SONAR_ORG    = 'esmeraldapv27'
         APP_HOST    = 'localhost'
         APP_PORT    = '8085'
         JTL         = 'target/jmeter/resultados.jtl'
@@ -42,14 +43,16 @@
             }
         }
 
-        // Análisis con SonarQube
-        stage('Análisis con SonarQube') {
+        // Análisis con SonarCloud
+        stage('Análisis con SonarCloud') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh 'mvn -B sonar:sonar -Dsonar.projectKey=${PROJECT_KEY} -Dsonar.projectName="PSW Pipeline Base" -Dsonar.java.binaries=target/classes'
+                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                        withSonarQubeEnv('SonarCloud') {
+                            sh 'mvn -B sonar:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=${SONAR_ORG} -Dsonar.projectKey=${PROJECT_KEY} -Dsonar.projectName="PSW Pipeline Base" -Dsonar.token=${SONAR_TOKEN} -Dsonar.java.binaries=target/classes'
+                        }
                     }
-                    timeout(time: 5, unit: 'MINUTES') {
+                    timeout(time: 10, unit: 'MINUTES') {
                         waitForQualityGate abortPipeline: false
                     }
                 }
