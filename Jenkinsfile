@@ -13,8 +13,6 @@ pipeline {
         SONAR_ORG    = 'esmeraldapv27'
         APP_HOST     = 'localhost'
         APP_PORT     = '8085'
-        JTL          = 'target/jmeter/resultados.jtl'
-        JM_REPORT    = 'target/jmeter/reporte'
     }
 
     stages {
@@ -65,42 +63,12 @@ pipeline {
         stage('Pruebas con JMeter') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    bat 'if not exist target\\jmeter mkdir target\\jmeter'
-                    powershell script: '''
-                        Start-Process -FilePath "java.exe" `
-                            -ArgumentList "-jar", "target\\psw-pipeline-base-0.0.1-SNAPSHOT.jar" `
-                            -RedirectStandardOutput "$PWD\\target\\app.log" `
-                            -RedirectStandardError "$PWD\\target\\app.err.log" `
-                            -PassThru | ForEach-Object { $_.Id | Set-Content -Path "target\\app.pid" }
-
-                        $ok = $false
-                        for ($i = 0; $i -lt 30; $i++) {
-                            try {
-                                $r = Invoke-WebRequest -Uri "http://localhost:8085/actuator/health" -UseBasicParsing -TimeoutSec 3
-                                if ($r.StatusCode -eq 200) { $ok = $true; break }
-                            } catch { }
-                            Start-Sleep -Seconds 2
-                        }
-                        if (-not $ok) { Write-Error "[ERROR] La aplicacion no respondio en el health check"; exit 1 }
-                    '''
-                    bat 'jmeter -n -t jmeter\\pruebas.jmx -l %JTL% -e -o %JM_REPORT% -j target\\jmeter\\jmeter.log'
-                    script {
-                        def fallos = powershell(returnStdout: true, script: "if (Test-Path '${env.JTL}') { (Select-String -Path '${env.JTL}' -Pattern ',false,' | Measure-Object).Count } else { -1 }").trim()
-                        echo "Muestras fallidas: ${fallos}"
-                        if (fallos.toInteger() > 0) {
-                            error("JMeter reportó ${fallos} muestras fallidas")
-                        }
-                    }
+                    bat 'mvn -B verify -Djmeter.host=%APP_HOST% -Djmeter.puerto=%APP_PORT% -DskipTests=false'
                 }
             }
             post {
                 always {
-                    script {
-                        if (fileExists('target/app.pid')) {
-                            bat 'powershell -NoProfile -Command "if (Test-Path target\\app.pid) { $p = Get-Content target\\app.pid -Raw; Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }"'
-                        }
-                    }
-                    archiveArtifacts artifacts: 'target/jmeter/**, target/app.log', allowEmptyArchive: true, fingerprint: true
+                    archiveArtifacts artifacts: 'target/jmeter/**', allowEmptyArchive: true, fingerprint: true
                 }
             }
         }
