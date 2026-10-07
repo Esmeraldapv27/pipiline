@@ -95,25 +95,30 @@
             }
         }
 
-        // Notificación
-        stage('Notificación') {
-            steps {
-                script {
-                    def resultado = currentBuild.currentResult
-                    def color = resultado == 'SUCCESS' ? 'good' : (resultado == 'UNSTABLE' ? 'warning' : 'danger')
-                    def estado = resultado == 'SUCCESS' ? 'EXITOSO' : "FALLIDO (${resultado})"
-                    slackSend(
-                        channel: env.SLACK_CHANNEL,
-                        color: color,
-                        message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* ${estado}\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
-                    )
-                }
-            }
-        }
-
     }
 
     post {
+        success {
+            slackSend(
+                channel: env.SLACK_CHANNEL,
+                color: 'good',
+                message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* EXITOSO\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
+            )
+        }
+        failure {
+            slackSend(
+                channel: env.SLACK_CHANNEL,
+                color: 'danger',
+                message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* FALLIDO (${currentBuild.currentResult})\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
+            )
+        }
+        unstable {
+            slackSend(
+                channel: env.SLACK_CHANNEL,
+                color: 'warning',
+                message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* INESTABLE\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
+            )
+        }
         always {
             junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
             archiveArtifacts artifacts: 'target/*.jar, target/site/jacoco/**', allowEmptyArchive: true, fingerprint: true

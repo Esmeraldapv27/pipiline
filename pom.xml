@@ -22,6 +22,14 @@
 
     <properties>
         <java.version>17</java.version>
+
+        <!-- Parámetros de la prueba de carga JMeter (ajustables desde CLI) -->
+        <jmeter.usuarios>100</jmeter.usuarios>
+        <jmeter.loops>1</jmeter.loops>
+        <jmeter.host>localhost</jmeter.host>
+        <jmeter.puerto>8085</jmeter.puerto>
+        <jmeter.error.threshold>1</jmeter.error.threshold>
+        <skipTests>false</skipTests>
     </properties>
 
     <dependencies>
@@ -85,6 +93,53 @@
                     </execution>
 
                 </executions>
+            </plugin>
+
+            <!-- Pruebas de carga con JMeter: mvn verify -->
+            <plugin>
+                <groupId>com.lazerycode.jmeter</groupId>
+                <artifactId>jmeter-maven-plugin</artifactId>
+                <version>3.8.0</version>
+
+                <executions>
+                    <execution>
+                        <id>configuration</id>
+                        <goals>
+                            <goal>configure</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jmeter-tests</id>
+                        <goals>
+                            <goal>jmeter</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jmeter-check-results</id>
+                        <goals>
+                            <goal>results</goal>
+                        </goals>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <testFilesDirectory>${project.basedir}/jmeter</testFilesDirectory>
+                    <testFilesIncluded>
+                        <jMeterTestFile>.*pruebas\.jmx</jMeterTestFile>
+                    </testFilesIncluded>
+                    <resultsFileFormat>csv</resultsFileFormat>
+                    <resultsDirectory>${project.build.directory}/jmeter/results</resultsDirectory>
+                    <generateReports>true</generateReports>
+                    <reportDirectory>${project.build.directory}/jmeter/reports</reportDirectory>
+                    <errorRateThresholdInPercent>${jmeter.error.threshold}</errorRateThresholdInPercent>
+                    <skipTests>${skipTests}</skipTests>
+                    <propertiesUser>
+                        <host>${jmeter.host}</host>
+                        <puerto>${jmeter.puerto}</puerto>
+                        <usuarios>${jmeter.usuarios}</usuarios>
+                        <loops>${jmeter.loops}</loops>
+                    </propertiesUser>
+                </configuration>
             </plugin>
 
         </plugins>
