@@ -15,7 +15,6 @@ pipeline {
         APP_PORT     = '8085'
         JTL          = 'target/jmeter/resultados.jtl'
         JM_REPORT    = 'target/jmeter/reporte'
-        SLACK_CHANNEL = '#ci-psw'
     }
 
     stages {
@@ -102,25 +101,13 @@ pipeline {
 
     post {
         success {
-            slackSend(
-                channel: env.SLACK_CHANNEL,
-                color: 'good',
-                message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* EXITOSO\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
-            )
+            echo "✅ Pipeline EXITOSO | Job: ${env.JOB_NAME} | Build: #${env.BUILD_NUMBER} | Rama: ${env.GIT_BRANCH ?: 'n/a'} | ${env.BUILD_URL}"
         }
         failure {
-            slackSend(
-                channel: env.SLACK_CHANNEL,
-                color: 'danger',
-                message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* FALLIDO (${currentBuild.currentResult})\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
-            )
+            echo "❌ Pipeline FALLIDO | Job: ${env.JOB_NAME} | Build: #${env.BUILD_NUMBER} | Rama: ${env.GIT_BRANCH ?: 'n/a'} | ${env.BUILD_URL}"
         }
         unstable {
-            slackSend(
-                channel: env.SLACK_CHANNEL,
-                color: 'warning',
-                message: "*Pipeline:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Estado:* INESTABLE\n*Rama:* ${env.GIT_BRANCH ?: 'n/a'}\n*Detalles:* ${env.BUILD_URL}"
-            )
+            echo "⚠️ Pipeline INESTABLE | Job: ${env.JOB_NAME} | Build: #${env.BUILD_NUMBER} | Rama: ${env.GIT_BRANCH ?: 'n/a'} | ${env.BUILD_URL}"
         }
         always {
             junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
