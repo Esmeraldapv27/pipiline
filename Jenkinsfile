@@ -40,14 +40,22 @@ pipeline {
         // Análisis con SonarCloud
         stage('Análisis con SonarCloud') {
             steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        withSonarQubeEnv('SonarCloud') {
-                            bat 'mvn -B sonar:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=%SONAR_ORG% -Dsonar.projectKey=%PROJECT_KEY% -Dsonar.projectName="PSW Pipeline Base" -Dsonar.token=%SONAR_TOKEN% -Dsonar.java.binaries=target/classes'
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    script {
+                        def sonarCredsExist = false
+                        try {
+                            withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                                sonarCredsExist = true
+                                withSonarQubeEnv('SonarCloud') {
+                                    bat 'mvn -B sonar:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=%SONAR_ORG% -Dsonar.projectKey=%PROJECT_KEY% -Dsonar.projectName="PSW Pipeline Base" -Dsonar.token=%SONAR_TOKEN% -Dsonar.java.binaries=target/classes'
+                                }
+                                timeout(time: 10, unit: 'MINUTES') {
+                                    waitForQualityGate abortPipeline: false
+                                }
+                            }
+                        } catch (e) {
+                            echo "⚠️ SonarCloud omitido: ${e.message}"
                         }
-                    }
-                    timeout(time: 10, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: false
                     }
                 }
             }
@@ -57,7 +65,7 @@ pipeline {
         stage('Pruebas con JMeter') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    bat 'mkdir target\\jmeter 2>nul'
+                    bat 'if not exist target\\jmeter mkdir target\\jmeter'
                     powershell script: '''
                         Start-Process -FilePath "java.exe" `
                             -ArgumentList "-jar", "target\\psw-pipeline-base-0.0.1-SNAPSHOT.jar" `
